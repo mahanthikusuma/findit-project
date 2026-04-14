@@ -9,9 +9,15 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cors());
 
-/* ================= DB ================= */
-mongoose.connect("mongodb+srv://kusumamahanthi2_db_user:Findit123@cluster0.c8fyxgm.mongodb.net/finditDB")
+/* ================= ROOT ROUTE (ADDED) ================= */
+app.get("/", (req, res) => {
+  res.send("FindIT Backend Running 🚀");
+});
 
+/* ================= DB ================= */
+mongoose.connect(
+  "mongodb+srv://kusumamahanthi2_db_user:Findit123@cluster0.c8fyxgm.mongodb.net/finditDB"
+)
   .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => console.log("❌ DB Error:", err));
 
@@ -25,7 +31,7 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model("User", userSchema);
 
-// 📦 ITEM ✅ (UPDATED)
+// 📦 ITEM
 const itemSchema = new mongoose.Schema({
   name: String,
   category: String,
@@ -37,14 +43,11 @@ const itemSchema = new mongoose.Schema({
   img: String,
   postedBy: String,
   userId: String,
-
-  // 🔥 ADDED FIELD (IMPORTANT)
   status: {
     type: String,
     enum: ["lost", "found", "returned"],
     default: "found"
   }
-
 }, { timestamps: true });
 const Item = mongoose.model("Item", itemSchema);
 
@@ -59,7 +62,7 @@ const claimSchema = new mongoose.Schema({
   proof: String,
   status: {
     type: String,
-    enum: ["Pending", "Accepted", "Rejected"], // ✅ improved
+    enum: ["Pending", "Accepted", "Rejected"],
     default: "Pending"
   }
 }, { timestamps: true });
@@ -115,7 +118,6 @@ app.post("/api/auth/login", async (req, res) => {
 
 /* ================= ITEMS ================= */
 
-// CREATE ITEM
 app.post("/api/items", async (req, res) => {
   try {
     const item = await Item.create(req.body);
@@ -125,11 +127,10 @@ app.post("/api/items", async (req, res) => {
   }
 });
 
-// GET ALL ITEMS ✅ (FILTER ADDED)
 app.get("/api/items", async (req, res) => {
   try {
     const items = await Item.find({
-      status: { $ne: "returned" } // 🔥 KEY FIX
+      status: { $ne: "returned" }
     }).sort({ createdAt: -1 });
 
     res.json(items || []);
@@ -138,32 +139,18 @@ app.get("/api/items", async (req, res) => {
   }
 });
 
-// GET SINGLE ITEM
 app.get("/api/items/:id", async (req, res) => {
   try {
-    const id = req.params.id;
-
-    if (!id) {
-      return res.status(400).json({ error: "ID missing" });
-    }
-
-    const item = await Item.findById(id);
-
-    if (!item) {
-      return res.status(404).json({ error: "Item not found" });
-    }
-
+    const item = await Item.findById(req.params.id);
+    if (!item) return res.status(404).json({ error: "Item not found" });
     res.json(item);
-
   } catch (err) {
-    console.log("❌ Item fetch error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 /* ================= CLAIMS ================= */
 
-// CREATE CLAIM
 app.post("/api/claims", async (req, res) => {
   try {
     const { itemId, itemName, ownerId, userId, name, phone, proof } = req.body;
@@ -172,14 +159,7 @@ app.post("/api/claims", async (req, res) => {
     if (existing) return res.status(400).json({ error: "Already claimed" });
 
     const claim = await Claim.create({
-      itemId,
-      itemName,
-      ownerId,
-      userId,
-      name,
-      phone,
-      proof,
-      status: "Pending"
+      itemId, itemName, ownerId, userId, name, phone, proof
     });
 
     await Notification.create({
@@ -194,130 +174,10 @@ app.post("/api/claims", async (req, res) => {
   }
 });
 
-// GET CLAIMS
-app.get("/api/claims/:ownerId", async (req, res) => {
-  try {
-    const claims = await Claim.find({
-      ownerId: req.params.ownerId,
-      status: "Pending"
-    }).sort({ createdAt: -1 });
-
-    res.json(claims || []);
-
-  } catch (err) {
-    res.status(500).json([]);
-  }
-});
-
-/* ================= ACCEPT ================= */
-
-app.put("/api/claims/accept/:id", async (req, res) => {
-  try {
-    const claim = await Claim.findById(req.params.id);
-
-    if (!claim) {
-      return res.status(404).json({ error: "Claim not found" });
-    }
-
-    claim.status = "Accepted";
-    await claim.save();
-
-    // reject others
-    await Claim.updateMany(
-      { itemId: claim.itemId, _id: { $ne: claim._id } },
-      { status: "Rejected" }
-    );
-
-    // 🔥 MAIN FIX (instead of delete → update status)
-    await Item.findByIdAndUpdate(
-      claim.itemId,
-      { status: "returned" }
-    );
-
-    // 🔔 notify claimer
-    await Notification.create({
-      userId: claim.userId,
-      message: `🎉 Your claim for "${claim.itemName}" ACCEPTED`
-    });
-
-    res.json({ message: "Accepted & Item Removed" });
-
-  } catch (err) {
-    console.log("❌ Accept error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/* ================= REJECT ================= */
-
-app.put("/api/claims/reject/:id", async (req, res) => {
-  try {
-    const claim = await Claim.findById(req.params.id);
-
-    if (!claim) {
-      return res.status(404).json({ error: "Claim not found" });
-    }
-
-    claim.status = "Rejected";
-    await claim.save();
-
-    await Notification.create({
-      userId: claim.userId,
-      message: `❌ Claim rejected for "${claim.itemName}"`
-    });
-
-    res.json({ message: "Rejected" });
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-/* ================= NOTIFICATIONS ================= */
-
-// GET
-app.get("/api/notifications/:userId", async (req, res) => {
-  try {
-    const data = await Notification.find({
-      userId: req.params.userId
-    }).sort({ createdAt: -1 });
-
-    res.json(data || []);
-
-  } catch (err) {
-    res.status(500).json([]);
-  }
-});
-
-// MARK READ
-app.put("/api/notifications/read/:id", async (req, res) => {
-  try {
-    await Notification.findByIdAndUpdate(req.params.id, { read: true });
-    res.json({ message: "read" });
-  } catch (err) {
-    res.status(500).json({ error: "failed" });
-  }
-});
-
-// DELETE ALL
-app.delete("/api/notifications/:userId", async (req, res) => {
-  try {
-    await Notification.deleteMany({ userId: req.params.userId });
-    res.json({ message: "cleared" });
-  } catch (err) {
-    res.status(500).json({ error: "failed" });
-  }
-});
-
-/* ================= ERROR ================= */
-
-app.use((err, req, res, next) => {
-  console.log("🔥 Server Crash:", err);
-  res.status(500).json({ error: "Something went wrong" });
-});
-
 /* ================= SERVER ================= */
 
-app.listen(5001, () => {
-  console.log("🔥 Server running on port 5001");
+const PORT = process.env.PORT || 5001; // 🔥 IMPORTANT FIX
+
+app.listen(PORT, () => {
+  console.log(`🔥 Server running on port ${PORT}`);
 });
