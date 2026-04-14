@@ -10,7 +10,8 @@ app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cors());
 
 /* ================= DB ================= */
-mongoose.connect("mongodb://127.0.0.1:27017/findit")
+mongoose.connect("mongodb+srv://kusumamahanthi2_db_user:Findit123@cluster0.c8fyxgm.mongodb.net/finditDB")
+
   .then(() => console.log("✅ MongoDB Connected"))
   .catch(err => console.log("❌ DB Error:", err));
 
