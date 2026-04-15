@@ -1,9 +1,32 @@
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  password: String
-});
+const userSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true // ✅ ADD
+    },
 
-export default mongoose.model("User", userSchema);
+    email: {
+      type: String,
+      required: true, // ✅ ADD
+      unique: true,   // ✅ ADD (duplicate users avoid)
+      lowercase: true // ✅ ADD
+    },
+
+    password: {
+      type: String,
+      required: true // ✅ ADD
+    }
+  },
+  {
+    timestamps: true // ✅ ADD (optional but useful)
+  }
+);
+
+// prevent overwrite error (same pattern as others) ✅
+const User =
+  mongoose.models.User ||
+  mongoose.model("User", userSchema);
+
+export default User;

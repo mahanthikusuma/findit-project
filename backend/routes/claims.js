@@ -37,8 +37,8 @@ router.post("/", async (req, res) => {
     const claim = new Claim({
       itemId: item._id,
       itemName: item.name,
-      ownerId: item.userId,
-      userId,
+      ownerId: String(item.userId), // ✅ FIX
+      userId: String(userId),       // ✅ FIX
       name: claimantName,
       phone: claimantPhone,
       proof,
@@ -47,10 +47,15 @@ router.post("/", async (req, res) => {
 
     await claim.save();
 
+    console.log("✅ CLAIM SAVED");
+
+    // 🔔 NOTIFICATION FIX
     await Notification.create({
-      userId: item.userId,
+      userId: String(item.userId), // ✅ MAIN FIX
       message: `📩 New claim for "${item.name}"`
     });
+
+    console.log("🔔 NOTIFICATION CREATED");
 
     res.status(201).json({
       message: "Claim submitted successfully",
@@ -68,7 +73,7 @@ router.post("/", async (req, res) => {
 router.get("/:ownerId", async (req, res) => {
   try {
     const claims = await Claim.find({
-      ownerId: req.params.ownerId
+      ownerId: String(req.params.ownerId) // ✅ FIX
     }).sort({ createdAt: -1 });
 
     res.json(claims);
@@ -93,10 +98,9 @@ router.put("/accept/:id", async (req, res) => {
     claim.status = "Accepted";
     await claim.save();
 
-    // 🔥 IMPORTANT FIX (instead of delete → update status)
     const updatedItem = await Item.findByIdAndUpdate(
       claim.itemId,
-      { status: "returned" },   // 👈 KEY CHANGE
+      { status: "returned" },
       { new: true }
     );
 
@@ -104,7 +108,7 @@ router.put("/accept/:id", async (req, res) => {
 
     // 🔔 notify claimant
     await Notification.create({
-      userId: claim.userId,
+      userId: String(claim.userId), // ✅ FIX
       message: `🎉 Your claim for "${claim.itemName}" is accepted`
     });
 
@@ -133,7 +137,7 @@ router.put("/reject/:id", async (req, res) => {
     await claim.save();
 
     await Notification.create({
-      userId: claim.userId,
+      userId: String(claim.userId), // ✅ FIX
       message: `❌ Your claim for "${claim.itemName}" was rejected`
     });
 

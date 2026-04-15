@@ -1,48 +1,71 @@
 import express from "express";
-import Item from "../models/item.js";
+import Item from "../models/Item.js"; // ✅ FIX (case sensitive)
 
 const router = express.Router();
 
-// ✅ GET all items
+/* ================= GET ALL ITEMS ================= */
 router.get("/", async (req, res) => {
   try {
-    const items = await Item.find();
+    const items = await Item.find().sort({ createdAt: -1 });
+
+    console.log("📤 ITEMS COUNT:", items.length); // ✅ DEBUG
+
     res.json(items);
   } catch (err) {
-    console.log("Error ❌", err);
+    console.log("GET ITEMS ERROR ❌", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ GET single item by ID 🔥 (IMPORTANT FIX)
+/* ================= GET SINGLE ITEM ================= */
 router.get("/:id", async (req, res) => {
   try {
     const item = await Item.findById(req.params.id);
 
     if (!item) {
-      return res.status(404).json({ message: "Item not found ❌" });
+      return res.status(404).json({ error: "Item not found ❌" });
     }
 
     res.json(item);
   } catch (err) {
-    console.log("Error ❌", err);
+    console.log("GET ITEM ERROR ❌", err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// ✅ POST item
+/* ================= CREATE ITEM ================= */
 router.post("/", async (req, res) => {
   try {
-    console.log("Incoming 👉", req.body);
+    console.log("📦 ITEM RECEIVED:", req.body);
 
-    const newItem = new Item(req.body);
-    await newItem.save();
+    // 🔥 BASIC VALIDATION
+    if (!req.body.name || !req.body.userId) {
+      return res.status(400).json({
+        error: "Name and userId are required"
+      });
+    }
 
-    console.log("Saved ✅");
+    const newItem = await Item.create({
+      name: req.body.name,
+      category: req.body.category || "",
+      place: req.body.place || "",
+      loc: req.body.loc || "",
+      date: req.body.date || "",
+      phone: req.body.phone || "",
+      type: req.body.type || "lost",
+      img: req.body.img || "",
+      postedBy: req.body.postedBy || "User",
+
+      userId: String(req.body.userId), // ✅ FIX (IMPORTANT)
+      status: "active" // ✅ ADD (for claim system)
+    });
+
+    console.log("✅ ITEM SAVED");
 
     res.status(201).json(newItem);
+
   } catch (err) {
-    console.log("Error ❌", err);
+    console.log("POST ITEM ERROR ❌", err);
     res.status(500).json({ error: err.message });
   }
 });

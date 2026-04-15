@@ -2,18 +2,33 @@ import mongoose from "mongoose";
 
 const claimSchema = new mongoose.Schema(
   {
-    itemId: String,
+    itemId: {
+      type: String,
+      required: true // ✅ ADD (important)
+    },
     itemName: String,
-    ownerId: String,
-    userId: String,
 
-    name: String,
+    ownerId: {
+      type: String,
+      required: true // ✅ ADD
+    },
+
+    userId: {
+      type: String,
+      required: true // ✅ ADD
+    },
+
+    name: {
+      type: String,
+      required: true // ✅ ADD
+    },
+
     phone: String,
     proof: String,
 
     status: {
       type: String,
-      enum: ["Pending", "Accepted", "Rejected"], // 👈 added
+      enum: ["Pending", "Accepted", "Rejected"],
       default: "Pending"
     }
   },
@@ -22,6 +37,7 @@ const claimSchema = new mongoose.Schema(
   }
 );
 
+// prevent overwrite error (unchanged ✅)
 const Claim = mongoose.models.Claim || mongoose.model("Claim", claimSchema);
 
 export default Claim;
