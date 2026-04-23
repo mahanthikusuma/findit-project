@@ -38,7 +38,7 @@ FindIT/
 # Installation & Setup
 
 # Clone Repository
-git clone https://github.com/your-username/findit.git
+git clone https://github.com/mahanthikusuma/findit-project
 cd findit
 # Install Dependencies
 
